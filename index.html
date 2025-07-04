@@ -61,14 +61,32 @@
   });
   categorySelect.insertBefore(new Option("全部まとめて", "__ALL__"), categorySelect.firstChild);
 
+  // 履歴（カテゴリ別）
+  const usedQuestions = {};
+
   window.draw = () => {
     const selected = categorySelect.value;
-    const questions = selected === "__ALL__"
+
+    const pool = selected === "__ALL__"
       ? Object.values(data).flat()
       : data[selected];
 
-    const randomIndex = Math.floor(Math.random() * questions.length);
-    document.getElementById("question").textContent = questions[randomIndex];
+    if (!usedQuestions[selected]) usedQuestions[selected] = [];
+
+    const unused = pool.filter(q => !usedQuestions[selected].includes(q));
+
+    if (unused.length === 0) {
+      if (confirm("全ての質問を出題しました。履歴をリセットしますか？")) {
+        usedQuestions[selected] = [];
+        return draw();
+      } else {
+        return;
+      }
+    }
+
+    const q = unused[Math.floor(Math.random() * unused.length)];
+    usedQuestions[selected].push(q);
+    document.getElementById("question").textContent = q;
   };
 })();
 </script>
