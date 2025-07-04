@@ -5,36 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>教採 面接質問くじ</title>
   <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 2em;
-      background: #f9f9f9;
+    body{font-family:sans-serif;text-align:center;padding:2em;background:#f9f9f9}
+    .question,.answer{
+      margin:1.2em auto;padding:1.1em;max-width:90%;border-radius:12px;
+      box-shadow:0 0 8px rgba(0,0,0,.1);background:#fff
     }
-    .question {
-      margin: 2em auto;
-      font-size: 1.3em;
-      background: #fff;
-      padding: 1.2em;
-      border-radius: 12px;
-      box-shadow: 0 0 8px rgba(0,0,0,0.1);
-      max-width: 90%;
-    }
-    select, button {
-      font-size: 1em;
-      padding: 0.6em 1em;
-      margin: 0.5em;
-      border-radius: 8px;
-      border: none;
-    }
-    button {
-      background: #007bff;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0056b3;
-    }
+    .question{font-size:1.3em}
+    .answer{font-size:1em;white-space:pre-wrap;display:none}
+    select,button{font-size:1em;padding:.6em 1em;margin:.3em;border:none;border-radius:8px}
+    button{background:#007bff;color:#fff;cursor:pointer}button:hover{background:#0056b3}
   </style>
 </head>
 <body>
@@ -43,50 +22,67 @@
   <div>
     <select id="category"></select>
     <button onclick="draw()">質問を引く</button>
+    <button id="showAnsBtn" onclick="toggleAnswer()" disabled>回答例を表示</button>
   </div>
 
   <div class="question" id="question">
     ↓ カテゴリを選んで「質問を引く」を押してください ↓
   </div>
+  <div class="answer" id="answer"></div>
 
 <script>
 (async () => {
-  const response = await fetch("questions.json");
-  const data = await response.json();
+  const data = await fetch("questions.json").then(r => r.json());
 
-  const categorySelect = document.getElementById("category");
-  Object.keys(data).forEach(category => {
-    const option = new Option(category, category);
-    categorySelect.appendChild(option);
-  });
-  categorySelect.insertBefore(new Option("全部まとめて", "__ALL__"), categorySelect.firstChild);
+  /** UI要素 **/
+  const catSel  = document.getElementById("category");
+  const qBox    = document.getElementById("question");
+  const aBox    = document.getElementById("answer");
+  const ansBtn  = document.getElementById("showAnsBtn");
 
-  // 履歴（カテゴリ別）
-  const usedQuestions = {};
+  /** プルダウン生成 **/
+  Object.keys(data).forEach(cat => catSel.add(new Option(cat, cat)));
+  catSel.insertBefore(new Option("全部まとめて", "__ALL__"), catSel.firstChild);
 
+  /** 出題履歴 **/
+  const used = {};
+
+  /** 現在表示中のQA **/
+  let currentQA = null;
+
+  /** 質問を引く **/
   window.draw = () => {
-    const selected = categorySelect.value;
-
-    const pool = selected === "__ALL__"
+    const cat = catSel.value;
+    const pool = cat === "__ALL__"
       ? Object.values(data).flat()
-      : data[selected];
+      : data[cat];
 
-    if (!usedQuestions[selected]) usedQuestions[selected] = [];
+    if(!used[cat]) used[cat]=[];
+    const unused = pool.filter(item => !used[cat].includes(item.q));
 
-    const unused = pool.filter(q => !usedQuestions[selected].includes(q));
-
-    if (unused.length === 0) {
-      if (confirm("全ての質問を出題しました。履歴をリセットしますか？")) {
-        usedQuestions[selected] = [];
+    if(unused.length===0){
+      if(confirm("全て出し終えました。履歴をリセットしますか？")){
+        used[cat]=[];
         return draw();
-      } else {
-        return;
-      }
+      }else return;
     }
 
-    const q = unused[Math.floor(Math.random() * unused.length)];
-    usedQuestions[selected].push(q);
-    document.getElementById("question").textContent = q;
+    currentQA = unused[Math.floor(Math.random()*unused.length)];
+    used[cat].push(currentQA.q);
+
+    qBox.textContent = currentQA.q;
+    aBox.style.display = "none";
+    aBox.textContent = currentQA.a || "回答例は設定されていません。";
+    ansBtn.disabled = !currentQA.a;
+    ansBtn.textContent = "回答例を表示";
+  };
+
+  /** 回答例トグル **/
+  window.toggleAnswer = () => {
+    if(!currentQA) return;
+    const show = aBox.style.display === "none";
+    aBox.style.display = show ? "block" : "none";
+    ansBtn.textContent = show ? "回答例を隠す" : "回答例を表示";
   };
 })();
 </script>
